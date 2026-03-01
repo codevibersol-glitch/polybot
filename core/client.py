@@ -124,7 +124,6 @@ class PolyClient:
             self._connected = True
 
         log.info("Connected.  API key: %s…", self._api_creds.api_key[:8])
-        log.debug("Client funder: %s", self._client.funder)
 
     def connect_with_api_creds(
         self,
