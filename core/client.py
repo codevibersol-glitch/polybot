@@ -338,7 +338,7 @@ class PolyClient:
                     params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
                 )
                 ct = self._client.get_balance_allowance(
-                    params=BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL_TOKEN)
+                    params=BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL)
                 )
             return {"usdc": usdc, "ctoken": ct}
         except Exception as exc:
@@ -359,6 +359,6 @@ class PolyClient:
         log.info("Setting Conditional Token allowance…")
         with self._call_lock:
             self._client.update_balance_allowance(
-                params=BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL_TOKEN)
+                params=BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL)
             )
         log.info("Allowances set successfully.")
