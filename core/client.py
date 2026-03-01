@@ -108,6 +108,7 @@ class PolyClient:
         from py_clob_client.constants import POLYGON
 
         log.info("Connecting to Polymarket CLOB (sig_type=%d)…", sig_type)
+        log.debug("Funder wallet: %s", wallet)
 
         with self._call_lock:
             self._client = ClobClient(
@@ -123,6 +124,7 @@ class PolyClient:
             self._connected = True
 
         log.info("Connected.  API key: %s…", self._api_creds.api_key[:8])
+        log.debug("Client funder: %s", self._client.funder)
 
     def connect_with_api_creds(
         self,
@@ -302,7 +304,9 @@ class PolyClient:
                     params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
                 )
             raw = resp.get("balance", "0") if isinstance(resp, dict) else "0"
-            return float(raw) / 1_000_000
+            balance = float(raw) / 1_000_000
+            log.debug("get_usdc_balance: raw=%s, balance=%.2f", raw, balance)
+            return balance
         except Exception as exc:
             log.debug("get_usdc_balance failed: %s", exc)
             return 0.0
@@ -318,8 +322,11 @@ class PolyClient:
             usdc_contract = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
             abi = [{"constant":True,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}]
             contract = w3.eth.contract(address=usdc_contract, abi=abi)
-            balance = contract.functions.balanceOf(self._client.funder).call()
-            return float(balance) / 1_000_000  # USDC has 6 decimals
+            funder = self._client.funder
+            balance = contract.functions.balanceOf(funder).call()
+            usd_balance = float(balance) / 1_000_000  # USDC has 6 decimals
+            log.debug("get_usdc_wallet_balance: funder=%s, raw=%s, balance=%.2f", funder, balance, usd_balance)
+            return usd_balance
         except Exception as exc:
             log.debug("get_usdc_wallet_balance failed: %s", exc)
             return 0.0
