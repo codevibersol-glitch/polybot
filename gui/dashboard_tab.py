@@ -124,6 +124,12 @@ class DashboardTab:
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
+            btn_row, text="Check Allowances", width=150,
+            command=self._check_allowances,
+            fg_color="#2196f3", hover_color="#64b5f6",
+        ).pack(side="left", padx=4)
+
+        ctk.CTkButton(
             btn_row, text="Set Allowances", width=140,
             command=self._set_allowances,
             fg_color="#ff9800", hover_color="#ffb74d",
@@ -292,6 +298,20 @@ class DashboardTab:
     def _deposit_usdc(self) -> None:
         import webbrowser
         webbrowser.open("https://polymarket.com/portfolio")
+
+    def _check_allowances(self) -> None:
+        from tkinter import messagebox
+        from core.client import PolyClient
+        try:
+            pc = PolyClient.instance()
+            allowances = pc.check_allowances()
+            usdc_raw = allowances.get("usdc", {}).get("balance", "0")
+            usdc = float(usdc_raw) / 1_000_000 if usdc_raw else 0
+            ct_raw = allowances.get("ctoken", {}).get("balance", "0")
+            ct = float(ct_raw) / 1_000_000 if ct_raw else 0
+            messagebox.showinfo("Allowances", f"USDC Allowance: ${usdc:,.2f}\nConditional Token Allowance: ${ct:,.2f}")
+        except Exception as exc:
+            messagebox.showerror("Error", f"Failed to check allowances: {exc}")
 
     def _set_allowances(self) -> None:
         from tkinter import messagebox
