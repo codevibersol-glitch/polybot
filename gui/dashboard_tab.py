@@ -307,9 +307,7 @@ class DashboardTab:
             allowances = pc.check_allowances()
             usdc_raw = allowances.get("usdc", {}).get("balance", "0")
             usdc = float(usdc_raw) / 1_000_000 if usdc_raw else 0
-            ct_raw = allowances.get("ctoken", {}).get("balance", "0")
-            ct = float(ct_raw) / 1_000_000 if ct_raw else 0
-            messagebox.showinfo("Allowances", f"USDC Allowance: ${usdc:,.2f}\nConditional Token Allowance: ${ct:,.2f}")
+            messagebox.showinfo("Allowances", f"USDC Allowance: ${usdc:,.2f}")
         except Exception as exc:
             messagebox.showerror("Error", f"Failed to check allowances: {exc}")
 

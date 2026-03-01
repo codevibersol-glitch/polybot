@@ -327,7 +327,7 @@ class PolyClient:
     # ── Allowances ────────────────────────────────────────────────────────────
     def check_allowances(self) -> dict:
         """
-        Return dict with 'usdc' and 'ctoken' allowance amounts.
+        Return dict with 'usdc' allowance amount.
         Returns empty dict if unavailable.
         """
         self._require()
@@ -337,17 +337,14 @@ class PolyClient:
                 usdc = self._client.get_balance_allowance(
                     params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
                 )
-                ct = self._client.get_balance_allowance(
-                    params=BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL)
-                )
-            return {"usdc": usdc, "ctoken": ct}
+            return {"usdc": usdc}
         except Exception as exc:
             log.error("check_allowances failed: %s", exc)
             return {}
 
     @_retry
     def set_allowances(self) -> None:
-        """Approve USDC and Conditional Tokens for the CLOB exchange contracts."""
+        """Approve USDC for the CLOB exchange contracts."""
         self._require()
         from py_clob_client.clob_types import BalanceAllowanceParams, AssetType
 
@@ -356,9 +353,4 @@ class PolyClient:
             self._client.update_balance_allowance(
                 params=BalanceAllowanceParams(asset_type=AssetType.COLLATERAL)
             )
-        log.info("Setting Conditional Token allowance…")
-        with self._call_lock:
-            self._client.update_balance_allowance(
-                params=BalanceAllowanceParams(asset_type=AssetType.CONDITIONAL)
-            )
-        log.info("Allowances set successfully.")
+        log.info("USDC allowance set successfully.")
