@@ -6,9 +6,18 @@ Setup Tab – credentials, allowance check, and "Connect & Go" button.
 Layout
 ──────
   ┌── Credentials ────────────────────────────────────────────────────────────┐
-  │  Private Key:      [●●●●●●●●●●●●●●●●●●●●●●●●●●●] [Show]                │
+  │  [Private Key]  [API Credentials]  ← segmented toggle                   │
+  │                                                                           │
+  │  — Private Key mode ──────────────────────────────────────────────────  │
+  │  Private Key:      [●●●●●●●●●●●●●●●●●●●●●●●●●●●] [Show]               │
+  │  Signature Type:   [EOA (0) ▼]                                          │
+  │                                                                           │
+  │  — API Credentials mode ───────────────────────────────────────────────  │
+  │  API Key:          [019caa24-…]                                          │
+  │  API Secret:       [●●●●●●●●●●●●●●●●●●●●●●●●●●●] [Show]               │
+  │  API Passphrase:   [●●●●●●●●●●●●●●●●●●●●●●●●●●●] [Show]               │
+  │                                                                           │
   │  Wallet Address:   [0x…]                                                 │
-  │  Signature Type:   [EOA (0) ▼]                                           │
   │  [ ] Remember key (encrypted with OS keychain)                           │
   └───────────────────────────────────────────────────────────────────────────┘
   ┌── Allowance Status ───────────────────────────────────────────────────────┐
@@ -67,9 +76,27 @@ class SetupTab:
             font=ctk.CTkFont(size=14, weight="bold"), text_color=TEXT,
         ).pack(anchor="w", padx=16, pady=(12, 6))
 
-        # Private key
-        pk_row = ctk.CTkFrame(cred_frame, fg_color=SURF)
-        pk_row.pack(fill="x", padx=12, pady=4)
+        # Auth mode toggle
+        self._auth_mode_var = ctk.StringVar(
+            value="Private Key" if self.app.config.get("auth_mode", "private_key") == "private_key"
+            else "API Credentials"
+        )
+        ctk.CTkSegmentedButton(
+            cred_frame,
+            values=["Private Key", "API Credentials"],
+            variable=self._auth_mode_var,
+            command=self._on_auth_mode_change,
+            fg_color=ACCENT,
+            selected_color=HILIT,
+            selected_hover_color="#6a3d9a",
+            unselected_color=ACCENT,
+        ).pack(anchor="w", padx=16, pady=(0, 10))
+
+        # ── Private Key panel ──────────────────────────────────────────────
+        self._pk_panel = ctk.CTkFrame(cred_frame, fg_color=SURF)
+
+        pk_row = ctk.CTkFrame(self._pk_panel, fg_color=SURF)
+        pk_row.pack(fill="x", padx=0, pady=4)
         ctk.CTkLabel(pk_row, text="Private Key:", width=130, anchor="w", text_color=TEXT).pack(side="left")
         self._pk_entry = ctk.CTkEntry(
             pk_row, width=440, show="●",
@@ -83,19 +110,8 @@ class SetupTab:
         )
         self._show_pk_btn.pack(side="left", padx=4)
 
-        # Wallet address
-        wa_row = ctk.CTkFrame(cred_frame, fg_color=SURF)
-        wa_row.pack(fill="x", padx=12, pady=4)
-        ctk.CTkLabel(wa_row, text="Wallet Address:", width=130, anchor="w", text_color=TEXT).pack(side="left")
-        self._wallet_entry = ctk.CTkEntry(
-            wa_row, width=440,
-            placeholder_text="0x…  (your Polygon wallet / funder address)",
-        )
-        self._wallet_entry.pack(side="left", padx=4)
-
-        # Signature type
-        sig_row = ctk.CTkFrame(cred_frame, fg_color=SURF)
-        sig_row.pack(fill="x", padx=12, pady=4)
+        sig_row = ctk.CTkFrame(self._pk_panel, fg_color=SURF)
+        sig_row.pack(fill="x", padx=0, pady=4)
         ctk.CTkLabel(sig_row, text="Signature Type:", width=130, anchor="w", text_color=TEXT).pack(side="left")
         self._sig_var = ctk.StringVar(value="EOA (0) – standard wallet")
         ctk.CTkOptionMenu(
@@ -109,7 +125,58 @@ class SetupTab:
             fg_color=ACCENT, button_color=HILIT, width=280,
         ).pack(side="left", padx=4)
 
-        # Remember key checkbox
+        # ── API Credentials panel ──────────────────────────────────────────
+        self._api_panel = ctk.CTkFrame(cred_frame, fg_color=SURF)
+
+        ak_row = ctk.CTkFrame(self._api_panel, fg_color=SURF)
+        ak_row.pack(fill="x", padx=0, pady=4)
+        ctk.CTkLabel(ak_row, text="API Key:", width=130, anchor="w", text_color=TEXT).pack(side="left")
+        self._api_key_entry = ctk.CTkEntry(
+            ak_row, width=440,
+            placeholder_text="019caa24-50ee-… (your Polymarket API key)",
+        )
+        self._api_key_entry.pack(side="left", padx=4)
+
+        asec_row = ctk.CTkFrame(self._api_panel, fg_color=SURF)
+        asec_row.pack(fill="x", padx=0, pady=4)
+        ctk.CTkLabel(asec_row, text="API Secret:", width=130, anchor="w", text_color=TEXT).pack(side="left")
+        self._api_secret_entry = ctk.CTkEntry(
+            asec_row, width=440, show="●",
+            placeholder_text="Base64-encoded secret from Polymarket settings",
+        )
+        self._api_secret_entry.pack(side="left", padx=4)
+        self._show_secret_btn = ctk.CTkButton(
+            asec_row, text="Show", width=60,
+            command=self._toggle_secret_visibility,
+            fg_color=ACCENT, hover_color="#1a4a80",
+        )
+        self._show_secret_btn.pack(side="left", padx=4)
+
+        apass_row = ctk.CTkFrame(self._api_panel, fg_color=SURF)
+        apass_row.pack(fill="x", padx=0, pady=4)
+        ctk.CTkLabel(apass_row, text="API Passphrase:", width=130, anchor="w", text_color=TEXT).pack(side="left")
+        self._api_pass_entry = ctk.CTkEntry(
+            apass_row, width=440, show="●",
+            placeholder_text="Passphrase from Polymarket settings",
+        )
+        self._api_pass_entry.pack(side="left", padx=4)
+        self._show_pass_btn = ctk.CTkButton(
+            apass_row, text="Show", width=60,
+            command=self._toggle_pass_visibility,
+            fg_color=ACCENT, hover_color="#1a4a80",
+        )
+        self._show_pass_btn.pack(side="left", padx=4)
+
+        # ── Shared fields (always visible) ────────────────────────────────
+        wa_row = ctk.CTkFrame(cred_frame, fg_color=SURF)
+        wa_row.pack(fill="x", padx=12, pady=4)
+        ctk.CTkLabel(wa_row, text="Wallet Address:", width=130, anchor="w", text_color=TEXT).pack(side="left")
+        self._wallet_entry = ctk.CTkEntry(
+            wa_row, width=440,
+            placeholder_text="0x…  (your Polygon wallet / funder address)",
+        )
+        self._wallet_entry.pack(side="left", padx=4)
+
         rem_row = ctk.CTkFrame(cred_frame, fg_color=SURF)
         rem_row.pack(fill="x", padx=12, pady=(4, 12))
         self._remember_var = ctk.BooleanVar(value=self.app.config.get("remember_key", False))
@@ -119,6 +186,9 @@ class SetupTab:
             variable=self._remember_var,
             text_color=SUB,
         ).pack(side="left")
+
+        # Show correct panel for initial mode
+        self._on_auth_mode_change(self._auth_mode_var.get(), pack_parent_padx=12)
 
         # ── Allowances section ─────────────────────────────────────────────
         allow_frame = ctk.CTkFrame(scroll, fg_color=SURF, corner_radius=8)
@@ -184,13 +254,15 @@ class SetupTab:
 
         tips = (
             "Quick Start:\n"
-            "1. Export your private key from Polymarket → Settings → Export Key\n"
-            "2. Copy your wallet address (the 0x… shown in Polymarket)\n"
-            "3. Paste both above and click Connect & Go\n"
+            "Option A – Private Key:  Export your key from Polymarket → Settings → Export Key\n"
+            "Option B – API Credentials:  Copy apiKey, secret, passphrase from Polymarket → Settings → API Keys\n\n"
+            "1. Enter your wallet address (0x… shown in Polymarket)\n"
+            "2. Choose auth mode and paste credentials above\n"
+            "3. Click Connect & Go\n"
             "4. Open Markets tab → Refresh → find a market → click Auto-Trade\n"
-            "5. Open Strategies tab → enable Market Making or Value Betting → Save\n"
+            "5. Open Strategies tab → enable a strategy → Save\n"
             "6. Watch your positions update live on the Dashboard\n\n"
-            "⚠  Your private key is NEVER logged or sent anywhere except directly to the "
+            "⚠  Your credentials are NEVER logged or sent anywhere except directly to the "
             "official Polymarket CLOB API at clob.polymarket.com"
         )
         ctk.CTkLabel(
@@ -199,21 +271,50 @@ class SetupTab:
             justify="left", wraplength=700,
         ).pack(padx=16, pady=12, anchor="w")
 
+    # ── Auth mode toggle ──────────────────────────────────────────────────────
+    def _on_auth_mode_change(self, mode: str, pack_parent_padx: int = 12) -> None:
+        if mode == "Private Key":
+            self._api_panel.pack_forget()
+            self._pk_panel.pack(fill="x", padx=pack_parent_padx, pady=(0, 4))
+        else:
+            self._pk_panel.pack_forget()
+            self._api_panel.pack(fill="x", padx=pack_parent_padx, pady=(0, 4))
+
     # ── Credential persistence ────────────────────────────────────────────────
     def _restore_saved_credentials(self) -> None:
-        """Pre-fill wallet address from config; load key from keychain if saved."""
+        """Pre-fill wallet address from config; restore saved credentials."""
         wallet = self.app.config.get("wallet_address", "")
         if wallet:
             self._wallet_entry.insert(0, wallet)
 
         from utils.crypto import load_key, key_is_saved
-        if key_is_saved():
-            key = load_key()
-            if key:
-                self._pk_entry.insert(0, key)
-                log.info("Private key loaded from secure storage.")
 
-    # ── PK visibility toggle ──────────────────────────────────────────────────
+        mode = self.app.config.get("auth_mode", "private_key")
+        if mode == "api_creds":
+            # Restore API key (non-sensitive) from config
+            ak = self.app.config.get("api_key", "")
+            if ak:
+                self._api_key_entry.insert(0, ak)
+            # Restore secret+passphrase from secure storage (stored as "secret:::passphrase")
+            if key_is_saved():
+                stored = load_key()
+                if stored and ":::" in stored:
+                    secret, passphrase = stored.split(":::", 1)
+                    self._api_secret_entry.insert(0, secret)
+                    self._api_pass_entry.insert(0, passphrase)
+                    log.info("API credentials loaded from secure storage.")
+                elif stored:
+                    # Legacy: only secret stored
+                    self._api_secret_entry.insert(0, stored)
+        else:
+            # Private key mode
+            if key_is_saved():
+                key = load_key()
+                if key:
+                    self._pk_entry.insert(0, key)
+                    log.info("Private key loaded from secure storage.")
+
+    # ── Visibility toggles ────────────────────────────────────────────────────
     def _toggle_pk_visibility(self) -> None:
         current = self._pk_entry.cget("show")
         if current == "●":
@@ -223,13 +324,43 @@ class SetupTab:
             self._pk_entry.configure(show="●")
             self._show_pk_btn.configure(text="Show")
 
+    def _toggle_secret_visibility(self) -> None:
+        current = self._api_secret_entry.cget("show")
+        if current == "●":
+            self._api_secret_entry.configure(show="")
+            self._show_secret_btn.configure(text="Hide")
+        else:
+            self._api_secret_entry.configure(show="●")
+            self._show_secret_btn.configure(text="Show")
+
+    def _toggle_pass_visibility(self) -> None:
+        current = self._api_pass_entry.cget("show")
+        if current == "●":
+            self._api_pass_entry.configure(show="")
+            self._show_pass_btn.configure(text="Hide")
+        else:
+            self._api_pass_entry.configure(show="●")
+            self._show_pass_btn.configure(text="Show")
+
     # ── Connection ────────────────────────────────────────────────────────────
     def _connect(self) -> None:
         if self._connecting:
             return
 
+        mode   = self._auth_mode_var.get()
+        wallet = self._wallet_entry.get().strip()
+
+        if not wallet or not wallet.startswith("0x"):
+            self._set_status("⚠ Please enter a valid wallet address (0x…).", YELLOW)
+            return
+
+        if mode == "API Credentials":
+            self._connect_api_creds(wallet)
+        else:
+            self._connect_private_key(wallet)
+
+    def _connect_private_key(self, wallet: str) -> None:
         private_key = self._pk_entry.get().strip()
-        wallet      = self._wallet_entry.get().strip()
         _sig_map = {
             "EOA (0) – standard wallet": 0,
             "Gnosis Safe (1)":           1,
@@ -237,25 +368,71 @@ class SetupTab:
         }
         sig_type = _sig_map.get(self._sig_var.get(), 0)
 
-        # Validate
         if not private_key:
             self._set_status("⚠ Please enter your private key.", YELLOW)
             return
-        if not wallet or not wallet.startswith("0x"):
-            self._set_status("⚠ Please enter a valid wallet address (0x…).", YELLOW)
-            return
 
-        # Save non-sensitive config
         self.app.config["wallet_address"] = wallet
         self.app.config["signature_type"] = sig_type
         self.app.config["remember_key"]   = self._remember_var.get()
+        self.app.config["auth_mode"]      = "private_key"
         self.app.save_config()
 
-        # Optionally store key
         if self._remember_var.get():
             from utils.crypto import save_key
             save_key(private_key)
 
+        self._start_connection_thread(
+            private_key=private_key,
+            wallet=wallet,
+            sig_type=sig_type,
+            api_creds=None,
+        )
+
+    def _connect_api_creds(self, wallet: str) -> None:
+        api_key        = self._api_key_entry.get().strip()
+        api_secret     = self._api_secret_entry.get().strip()
+        api_passphrase = self._api_pass_entry.get().strip()
+
+        if not api_key:
+            self._set_status("⚠ Please enter your API Key.", YELLOW)
+            return
+        if not api_secret:
+            self._set_status("⚠ Please enter your API Secret.", YELLOW)
+            return
+        if not api_passphrase:
+            self._set_status("⚠ Please enter your API Passphrase.", YELLOW)
+            return
+
+        self.app.config["wallet_address"] = wallet
+        self.app.config["remember_key"]   = self._remember_var.get()
+        self.app.config["auth_mode"]      = "api_creds"
+        self.app.config["api_key"]        = api_key
+        self.app.save_config()
+
+        if self._remember_var.get():
+            from utils.crypto import save_key
+            # Store secret and passphrase together, split on :::
+            save_key(f"{api_secret}:::{api_passphrase}")
+
+        self._start_connection_thread(
+            private_key="",
+            wallet=wallet,
+            sig_type=2,
+            api_creds={
+                "api_key":        api_key,
+                "api_secret":     api_secret,
+                "api_passphrase": api_passphrase,
+            },
+        )
+
+    def _start_connection_thread(
+        self,
+        private_key: str,
+        wallet: str,
+        sig_type: int,
+        api_creds: "dict | None",
+    ) -> None:
         self._set_status("Connecting…", YELLOW)
         self._connect_btn.configure(state="disabled", text="Connecting…")
         self._connecting = True
@@ -268,10 +445,9 @@ class SetupTab:
                     wallet=wallet,
                     sig_type=sig_type,
                     cfg=self.app.config,
+                    api_creds=api_creds,
                 )
-                # Success – notify on main thread
                 self.app.gui_queue.put_nowait({"type": "connected", "wallet": wallet})
-                # Load markets immediately
                 from core.market_data import MarketDataService
                 markets = MarketDataService.instance().fetch_markets(force=True)
                 self.app.gui_queue.put_nowait({"type": "markets_loaded", "markets": markets})
@@ -282,7 +458,6 @@ class SetupTab:
                     "title": "Connection Failed",
                     "message": str(exc),
                 })
-                # Reset button state (must happen on main thread)
                 self.app.after(0, self._reset_connect_btn)
             finally:
                 self._connecting = False
@@ -367,7 +542,6 @@ class SetupTab:
                 self.app.after(0, lambda: messagebox.showinfo(
                     "Done", "Allowances set! You can now trade."
                 ))
-                # Refresh allowance display
                 self._check_allowances()
             except Exception as exc:
                 log.error("set_allowances failed: %s", exc)

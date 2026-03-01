@@ -158,6 +158,21 @@ class MarketDataService:
         with self._data_lock:
             return self._by_token.get(token_id)
 
+    def get_tick_size(self, token_id: str) -> float:
+        """
+        Return the minimum tick size for the market containing token_id.
+        Falls back to 0.01 (the most common Polymarket tick) if unknown.
+        """
+        market = self.get_market_by_token(token_id)
+        if not market:
+            return 0.01
+        raw = market.get("minimum_tick_size") or market.get("minTickSize") or 0.01
+        try:
+            ts = float(raw)
+            return ts if ts > 0 else 0.01
+        except (TypeError, ValueError):
+            return 0.01
+
     def search(self, query: str) -> list[dict]:
         """Case-insensitive substring search on market question / slug."""
         q = query.lower()

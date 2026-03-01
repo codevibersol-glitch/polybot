@@ -117,12 +117,55 @@ class PolyClient:
                 signature_type=sig_type,
                 funder=wallet,
             )
-            # Derive deterministic L2 creds from the private key
-            self._api_creds = self._client.derive_api_key()
+            # Register / derive deterministic L2 creds from the private key
+            self._api_creds = self._client.create_or_derive_api_creds()
             self._client.set_api_creds(self._api_creds)
             self._connected = True
 
         log.info("Connected.  API key: %s…", self._api_creds.api_key[:8])
+
+    def connect_with_api_creds(
+        self,
+        api_key: str,
+        api_secret: str,
+        api_passphrase: str,
+        wallet: str,
+    ) -> None:
+        """
+        Connect using pre-existing L2 API credentials exported from Polymarket.
+        api_secret is a base64url-encoded 32-byte L2 private key, used for both
+        EIP-712 order signing and HMAC HTTP authentication (signature_type=2).
+        """
+        import base64
+        from py_clob_client.client import ClobClient
+        from py_clob_client.constants import POLYGON
+        from py_clob_client.clob_types import ApiCreds
+
+        log.info("Connecting with pre-existing L2 API credentials…")
+
+        # api_secret is the base64url-encoded L2 signing private key
+        padding = "=" * (-len(api_secret) % 4)
+        decoded = base64.urlsafe_b64decode(api_secret + padding)
+        hex_key = "0x" + decoded.hex()
+
+        with self._call_lock:
+            self._client = ClobClient(
+                host="https://clob.polymarket.com",
+                chain_id=POLYGON,
+                key=hex_key,        # L2 private key for EIP-712 order signing
+                signature_type=2,   # Polymarket Magic / L2 key auth
+                funder=wallet,
+            )
+            # Set provided creds directly — skip derive_api_key()
+            self._api_creds = ApiCreds(
+                api_key=api_key,
+                api_secret=api_secret,
+                api_passphrase=api_passphrase,
+            )
+            self._client.set_api_creds(self._api_creds)
+            self._connected = True
+
+        log.info("Connected via API creds.  API key: %s…", api_key[:8])
 
     @property
     def connected(self) -> bool:
@@ -262,6 +305,23 @@ class PolyClient:
             return float(raw) / 1_000_000
         except Exception as exc:
             log.debug("get_usdc_balance failed: %s", exc)
+            return 0.0
+
+    def get_usdc_wallet_balance(self) -> float:
+        """
+        Return the wallet's actual USDC balance on Polygon in dollars.
+        Queries the USDC contract directly via web3.
+        """
+        try:
+            from web3 import Web3
+            w3 = Web3(Web3.HTTPProvider("https://polygon-rpc.com"))
+            usdc_contract = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+            abi = [{"constant":True,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}]
+            contract = w3.eth.contract(address=usdc_contract, abi=abi)
+            balance = contract.functions.balanceOf(self._client.funder).call()
+            return float(balance) / 1_000_000  # USDC has 6 decimals
+        except Exception as exc:
+            log.debug("get_usdc_wallet_balance failed: %s", exc)
             return 0.0
 
     # ── Allowances ────────────────────────────────────────────────────────────

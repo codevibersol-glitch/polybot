@@ -87,6 +87,7 @@ class BotEngine:
 
         # USDC cash balance (fetched from CLOB, updated every _BALANCE_REFRESH s)
         self._cash_balance: float = 0.0
+        self._wallet_balance: float = 0.0
         self._wallet: str = ""
 
         # Tokens known to return 404 (resolved/closed markets) – never fetch again
@@ -100,7 +101,14 @@ class BotEngine:
             return cls._instance
 
     # ── Connect ───────────────────────────────────────────────────────────────
-    def connect(self, private_key: str, wallet: str, sig_type: int, cfg: dict) -> None:
+    def connect(
+        self,
+        private_key: str,
+        wallet: str,
+        sig_type: int,
+        cfg: dict,
+        api_creds: "dict | None" = None,
+    ) -> None:
         """
         Full startup sequence:
           1. Connect CLOB client
@@ -115,7 +123,15 @@ class BotEngine:
 
         # 1. CLOB connection
         pc = PolyClient.instance()
-        pc.connect(private_key, wallet, sig_type)
+        if api_creds:
+            pc.connect_with_api_creds(
+                api_key=api_creds["api_key"],
+                api_secret=api_creds["api_secret"],
+                api_passphrase=api_creds["api_passphrase"],
+                wallet=wallet,
+            )
+        else:
+            pc.connect(private_key, wallet, sig_type)
 
         # 1b. Fetch initial USDC cash balance
         try:
@@ -291,13 +307,17 @@ class BotEngine:
             log.error("Market refresh failed: %s", exc)
 
     def _refresh_cash_balance(self) -> None:
-        """Fetch current USDC cash balance from the CLOB."""
+        """Fetch current USDC cash balance from the CLOB and wallet."""
         try:
-            bal = PolyClient.instance().get_usdc_balance()
+            pc = PolyClient.instance()
+            bal = pc.get_usdc_balance()
             self._cash_balance = bal
             log.debug("USDC cash balance refreshed: $%.2f", bal)
+            wallet_bal = pc.get_usdc_wallet_balance()
+            self._wallet_balance = wallet_bal
+            log.debug("USDC wallet balance refreshed: $%.2f", wallet_bal)
         except Exception as exc:
-            log.debug("Cash balance refresh failed: %s", exc)
+            log.debug("Balance refresh failed: %s", exc)
 
     def _refresh_prices(self) -> None:
         """
@@ -450,11 +470,13 @@ class BotEngine:
             # Total portfolio = open position market value + uninvested cash
             total_pv  = round(live_pv + cash, 2)
 
+            wallet = round(self._wallet_balance, 2)
             self.gui_queue.put_nowait({
                 "type": "status",
                 "portfolio_value":    total_pv,
                 "positions_value":    live_pv,
                 "cash_balance":       cash,
+                "wallet_balance":     wallet,
                 "unrealized_pnl":     live_upnl,
                 "realized_pnl":       rpnl,
                 "total_pnl":          round(live_upnl + rpnl, 2),

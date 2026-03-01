@@ -39,6 +39,13 @@ from core.risk_manager import RiskManager
 log = get_logger(__name__)
 
 
+def _round_to_tick(price: float, tick: float) -> float:
+    """Round price to the nearest valid tick increment."""
+    if tick <= 0:
+        return round(price, 4)
+    return round(round(price / tick) * tick, 10)
+
+
 class OrderManager:
     """Singleton order lifecycle manager."""
 
@@ -87,6 +94,11 @@ class OrderManager:
             return None
 
         try:
+            # Round price to the market's tick size before submitting
+            from core.market_data import MarketDataService
+            tick = MarketDataService.instance().get_tick_size(token_id)
+            price = _round_to_tick(price, tick)
+
             pc = PolyClient.instance()
             resp = pc.create_and_post_order(token_id, price, size, side, order_type)
             order_id = resp.get("orderID") or resp.get("order_id")

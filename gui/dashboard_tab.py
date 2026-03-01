@@ -118,6 +118,12 @@ class DashboardTab:
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
+            btn_row, text="Deposit USDC", width=140,
+            command=self._deposit_usdc,
+            fg_color="#4caf50", hover_color="#66bb6a",
+        ).pack(side="left", padx=4)
+
+        ctk.CTkButton(
             btn_row, text="⚡ Cancel All Orders", width=180,
             command=self._cancel_all,
             fg_color="#7b1111", hover_color="#a01c1c",
@@ -200,15 +206,16 @@ class DashboardTab:
     # ── Update from engine status dict ────────────────────────────────────────
     def update_status(self, msg: dict) -> None:
         """Called by App._apply_status() on every engine update."""
-        pv   = msg.get("portfolio_value", 0)   # positions value + cash
-        cash = msg.get("cash_balance", 0)
-        upnl = msg.get("unrealized_pnl", 0)
-        rpnl = msg.get("realized_pnl", 0)
-        tpnl = msg.get("total_pnl", 0)
+        pv     = msg.get("portfolio_value", 0)   # positions value + cash
+        cash   = msg.get("cash_balance", 0)
+        wallet = msg.get("wallet_balance", 0)
+        upnl   = msg.get("unrealized_pnl", 0)
+        rpnl   = msg.get("realized_pnl", 0)
+        tpnl   = msg.get("total_pnl", 0)
 
         self._card_portfolio.configure(text=f"${pv:,.2f}")
         if self._card_cash is not None:
-            self._card_cash.configure(text=f"Cash: ${cash:,.2f}")
+            self._card_cash.configure(text=f"Cash: ${cash:,.2f} / Wallet: ${wallet:,.2f}")
 
         pnl_color = GREEN if tpnl >= 0 else RED
         self._card_total_pnl.configure(
@@ -275,6 +282,10 @@ class DashboardTab:
             from core.order_manager import OrderManager
             n = OrderManager.instance().cancel_all()
             messagebox.showinfo("Done", f"Cancelled {n} orders.")
+
+    def _deposit_usdc(self) -> None:
+        import webbrowser
+        webbrowser.open("https://polymarket.com/portfolio")
 
     def _manual_refresh(self) -> None:
         from core.engine import BotEngine

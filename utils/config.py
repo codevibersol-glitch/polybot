@@ -58,6 +58,8 @@ _DEFAULTS: dict = {
     "wallet_address": "",
     "signature_type": 0,
     "remember_key": False,
+    "auth_mode": "private_key",   # "private_key" | "api_creds"
+    "api_key": "",                # L2 api_key identifier (safe to persist)
     "strategies": {
         "market_making": {
             "enabled": False,
@@ -126,9 +128,11 @@ def load() -> dict:
 
 def save(cfg: dict) -> None:
     """Persist config to disk.  Private key is NEVER saved here."""
-    # Safety: strip private key if caller accidentally included it
+    # Safety: strip sensitive fields if caller accidentally included them
     safe = copy.deepcopy(cfg)
     safe.pop("private_key", None)
+    safe.pop("api_secret", None)
+    safe.pop("api_passphrase", None)
     try:
         with CONFIG_FILE.open("w", encoding="utf-8") as f:
             json.dump(safe, f, indent=2)
