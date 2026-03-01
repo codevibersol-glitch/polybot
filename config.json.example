@@ -1,0 +1,48 @@
+{
+  "_comment": "Copy this file to config.json and edit.  Private key is never stored here.",
+
+  "wallet_address":  "0xYourWalletAddressHere",
+  "signature_type":  0,
+  "remember_key":    false,
+
+  "strategies": {
+    "market_making": {
+      "_comment": "Two-sided quoting around the CLOB midpoint",
+      "enabled":     false,
+      "spread_pct":  0.02,
+      "max_pos_usd": 50.0,
+      "refresh_sec": 10,
+      "max_markets": 3
+    },
+    "value_betting": {
+      "_comment": "Trade when implied prob deviates from fair value by > min_edge_pct",
+      "enabled":        false,
+      "min_edge_pct":   0.05,
+      "max_pos_usd":    30.0,
+      "kelly_fraction": 0.25
+    },
+    "copy_trading": {
+      "_comment": "Mirror top-volume traders at a scaled-down size",
+      "enabled":            false,
+      "scale_factor":       0.10,
+      "max_pos_usd":        20.0,
+      "check_interval_min": 5
+    },
+    "time_decay": {
+      "_comment": "Auto-sell near expiry; buy cheap No tokens on stale markets",
+      "enabled":              false,
+      "hours_before_expiry":  6,
+      "min_no_price":         0.85
+    }
+  },
+
+  "risk": {
+    "_comment": "Hard stops enforced before every order",
+    "max_total_exposure_usd": 200.0,
+    "max_per_market_usd":      50.0,
+    "max_daily_loss_usd":      50.0
+  },
+
+  "watched_markets":     [],
+  "auto_trade_markets":  []
+}

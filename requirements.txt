@@ -1,0 +1,24 @@
+# Polymarket Desktop Trading Bot – Requirements
+# Install with: pip install -r requirements.txt
+
+# ── Polymarket CLOB SDK ────────────────────────────────────────────────────────
+py-clob-client>=0.19.0          # Official Polymarket CLOB Python client
+
+# ── GUI ────────────────────────────────────────────────────────────────────────
+customtkinter>=5.2.2            # Modern, dark-mode-ready Tkinter wrapper
+Pillow>=10.1.0                  # Required by customtkinter for image handling
+
+# ── Networking ─────────────────────────────────────────────────────────────────
+requests>=2.31.0                # HTTP – Gamma API, Data API, REST calls
+websocket-client>=1.6.4         # WebSocket – CLOB real-time price/fill feeds
+
+# ── Data & Math ────────────────────────────────────────────────────────────────
+pandas>=2.0.3                   # P/L tables, trade history, CSV export
+python-dateutil>=2.8.2          # Datetime parsing for market expiry
+
+# ── Security ───────────────────────────────────────────────────────────────────
+cryptography>=41.0.4            # AES-GCM encryption for stored private key
+keyring>=24.2.0                 # OS keychain integration (macOS Keychain, etc.)
+
+# ── Blockchain ─────────────────────────────────────────────────────────────────
+web3>=6.11.0                    # Ethereum / Polygon utilities (used by py-clob-client)
