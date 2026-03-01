@@ -124,6 +124,12 @@ class DashboardTab:
         ).pack(side="left", padx=4)
 
         ctk.CTkButton(
+            btn_row, text="Set Allowances", width=140,
+            command=self._set_allowances,
+            fg_color="#ff9800", hover_color="#ffb74d",
+        ).pack(side="left", padx=4)
+
+        ctk.CTkButton(
             btn_row, text="⚡ Cancel All Orders", width=180,
             command=self._cancel_all,
             fg_color="#7b1111", hover_color="#a01c1c",
@@ -286,6 +292,17 @@ class DashboardTab:
     def _deposit_usdc(self) -> None:
         import webbrowser
         webbrowser.open("https://polymarket.com/portfolio")
+
+    def _set_allowances(self) -> None:
+        from tkinter import messagebox
+        if messagebox.askyesno("Set Allowances", "Approve USDC and Conditional Tokens for trading?\n\nThis is a one-time on-chain transaction (~$0.01 gas)."):
+            from core.client import PolyClient
+            try:
+                pc = PolyClient.instance()
+                pc.set_allowances()
+                messagebox.showinfo("Success", "Allowances set successfully!")
+            except Exception as exc:
+                messagebox.showerror("Error", f"Failed to set allowances: {exc}")
 
     def _manual_refresh(self) -> None:
         from core.engine import BotEngine
